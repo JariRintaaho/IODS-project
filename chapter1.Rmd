@@ -11,3 +11,8 @@ date()
 ```
 The text continues here.
 
+What to expect for this course? The truth is, I don't know. I have some previous background in programming, mostly with Python, but I have never studied data analysis in any way.
+
+For this course, I expect to learn data analytics work flow and R programming.
+
+Link to my GitHub repository for this course: https://github.com/JariRintaaho/IODS-project 
