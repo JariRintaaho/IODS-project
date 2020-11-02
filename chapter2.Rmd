@@ -1,13 +1,49 @@
-# Insert chapter 2 title here
+# Week 2: Regression and model validation
 
-*Describe the work you have done this week and summarize your learning.*
-
-- Describe your work and results clearly. 
-- Assume the reader has an introductory course level understanding of writing and reading R code as well as statistical methods.
-- Assume the reader has no previous knowledge of your data or the more advanced methods you are using.
 
 ```{r}
 date()
+
+#The data is located in a server. Easyest way to get it, is to use read.csv(url)
+
+url="http://s3.amazonaws.com/assets.datacamp.com/production/course_2218/datasets/learning2014.txt"
+learning2014=read.csv(url)
+
+str(learning2014)
+
+```
+The dataset learning2014 consist 166 rows and 7 variables. The structure of the data is shown above. The dataset is handled using data.frame structures in R. The data is related to International survey o Approaches to Learning by Kimmo Vehkalahti.
+
+```{r}
+# ggplot2 is an excellent library for ploting in R. With 3 lines, it is possible to plot practically everything you have ever wanted to see from a datafile.
+
+library(GGally)
+library(ggplot2)
+
+ggpairs(learning2014, title="Practically everything you want to see from a data set", ggplot2::aes(colour=gender), method = c("everything", "pearson")) 
+
 ```
 
-Here we go again...
+From the ggpairs-plot one can see that all the variables, except points, are more or less normally distributed. The gender does not effect dramatically for points. The distributions for males and females are very similar.
+
+```{r}
+# selected explanatory variables for the regression model are: attitude, surf and stra. The target variable is points. 
+
+model = lm(points ~ attitude + surf + stra, data=learning2014) 
+
+summary(model)
+
+# The model seems to fit to the dataset with sufficient accuracy.
+```
+
+The plots: Residuals vs Fitted values, Normal QQ-plot and Residuals vs Leverage
+
+
+```{r}
+par(mfrow = c(2,2))
+plot(model, which=c(1,2,5))
+
+```
+
+The linear model seems to work OK.
+
