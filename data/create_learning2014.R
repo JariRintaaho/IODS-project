@@ -22,3 +22,5 @@ write.csv(analysis,file="learning2014.csv",row.names = FALSE)
 read_test=read.csv("learning2014.csv")
 
 str(read_test)
+
+

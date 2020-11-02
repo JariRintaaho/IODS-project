@@ -47,3 +47,4 @@ plot(model, which=c(1,2,5))
 
 The linear model seems to work OK.
 
+
