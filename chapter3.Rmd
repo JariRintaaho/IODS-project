@@ -144,6 +144,7 @@ data <- mutate(data, prediction = (probability > 0.5))
 ```
 The requested 2 x 2 cross tabulation of predictions versus the actual values. It can easily see, that the model prediction errors are not symmetrical. The tends to miss most of the high users and give some false positive predictions.
 
+
 ```{r}
 # tabulate the target variable versus the predictions
 table(high_use = data$high_use, prediction = data$prediction)
