@@ -55,9 +55,12 @@ for(column_name in notjoined_columns) {
 # glimpse at the new combined data
 #glimpse(alc)
 
-alc$alc_use=(alc$Dalc+alc$Walc)/2
+# part 6
 
+alc$alc_use=(alc$Dalc+alc$Walc)/2
 alc$high_use=(alc$alc_use > 2)
+
+# Part 7
 
 write.csv(x=alc, file="alc.csv")
 
