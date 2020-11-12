@@ -1,0 +1,132 @@
+# Week 3: Logistic regression
+
+
+```{r}
+date()
+```
+
+## Part 2: downloading the data
+
+```{r}
+url = "http://s3.amazonaws.com/assets.datacamp.com/production/course_2218/datasets/alc.txt" 
+
+data=read.csv(url, sep=",")
+
+
+```
+
+### The glimpse of the data:
+
+The glimpse is much nicer that the summary(). At the moment, we are not interested in statistical parameters.
+
+```{r}
+library(dplyr)
+glimpse(data)
+
+
+```
+
+The data seems to have 382 rows and 35 columns. There are several numerical columns, several categorical columns and even one logical column. The data is somehow related to students' alcohol consumption.
+
+## Part 3: Hypotesis
+
+The aim of this task is to analyze alcohol consumption level (logical variable high_use) using four parameters. The interesting parameters are freetime, famrel, goout and absences. It think it is quite obvious that those students how has lot of free time and go out often use more alcohol. According to scientific consensus, family relations affect alcohol consumption. Based on personal experience related to alcohol consumption and studies, high level of alcohol consumption causes absence.
+
+## Part 4: Histograms and relations with alcohol consumption
+
+First, let's draw four histograms. One for each variable
+
+```{r}
+# par makes multiple plots look nicer :)
+par(mfrow=c(2,2))
+hist(data$freetime)
+hist(data$famrel)
+hist(data$goout)
+hist(data$absences)
+
+```
+
+It seem that freetime and goout are distributed in more or less Gaussian way. Most of the studest have free time and their going out is average.
+
+The average family relation is skewed. Most of the students have family relation 3 to 5. However, there are still some, whose family relation is 1 or 2. 
+
+The absence is also skewed. Nearly all of the students have absence less than 20. However, there seems to be at least one, whose absence is larger than 50.
+
+Let's then see, how the box plots look like
+
+```{r}
+# ggplot 2 has some nice plot styles.
+library(ggplot2)
+
+# par makes multiple plots look nicer :)
+par(mfrow=c(2,2))
+g1 = ggplot(data, aes(x = high_use, y = freetime))
+g1 = g1 + ggtitle("Student freetime by alcohol consumption")
+g1 + geom_boxplot() + ylab("freetime")
+
+g2 = ggplot(data, aes(x = high_use, y = famrel))
+g2 = g2 + ggtitle("Student famrel by alcohol consumption")
+g2 + geom_boxplot() + ylab("famrel")
+
+g3 = ggplot(data, aes(x = high_use, y = goout))
+g3 = g3 + ggtitle("Student goout by alcohol consumption")
+g3 + geom_boxplot() + ylab("goout")
+
+g4 = ggplot(data, aes(x = high_use, y = absences))
+g4 = g4 + ggtitle("Student absences by alcohol consumption")
+g4 + geom_boxplot() + ylab("absences")
+
+```
+
+Based on the findings (the box plots), free time seems to have no effect on alcohol consumption. In both groups (high users and low users) the amouth of free time is identical.
+
+Family relations seems to have effect on alcohol consumption. However, with this parameter there are two outlier points. They are not high users, but they have low scores in family relations.
+
+It seems that going out is linked to being a heavy user of alcohol. Thus, there is one outlier point, who goes out often, but doesn't use much alcohol.
+
+Absence and being a high user seems to go hand in hand. But, not always. There are lots of outlier points. There are several students, who have plenty of absence, but they are not high users.
+
+Based on the findings, low familiy relations and going out often seems to have strong relations for being a high user of alcohol. Also absence has some explanatory value. Opposite to original hypothesis, the amount of free times seems not to affect on alcohol consumption.
+
+## Part 5
+
+The logistic regression model can be built using a single command
+
+```{r}
+m <- glm(high_use ~ freetime + famrel +goout + absences, 
+         data = data, family = "binomial")
+```
+
+The model summary. The Pr values for each variable shows clear difference. The smaller the Pr value of a parameter is the better explainer of the parameter is. The rule of thumb is, that if Pr < 0.05, it has value for the model. In this case, goout can be seen as an excellent parameter. Both absences and famrel have some value for the model for explaing the high use of alcohol. The free time seems to have no use for the model.
+
+```{r}
+summary(m)
+```
+The coefficients odds rations and their intervals. The coefficients does not tell much for anyone. But the odds rations and especially their intervals say. If the odds ratio of a parameter is exactly 1, the parameter has no explanatory value for the model. For odds ratio < 1, the parameter has negative correlation and for odds ratio > 1, the correlation is positive.
+
+As one clearly sees, the 95 % confidence boundary for freetime parameter crosses the critical value 1. Therefore, one cannot say, if increased freetime cause high use of alcohol or not.
+
+As expected, family relations have negative correlation. Those studets with high family relations are less likely to be high users of alcohol.
+
+Those students, who go out often, are high users of alcohol, with no doupt. However, the positive correlation between being high user and having lots of absence is only small.
+
+```{r}
+coef(m)
+
+# compute odds ratios (OR)
+OR <- coef(m) %>% exp
+
+# compute confidence intervals (CI)
+CI = confint(m) %>% exp
+
+# print out the odds ratios with their confidence intervals
+cbind(OR, CI)
+
+```
+
+
+
+
+
+
+
