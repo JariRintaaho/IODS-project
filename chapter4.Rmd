@@ -1,0 +1,255 @@
+# Week 4: Clustering and classification
+
+```{r}
+date()
+```
+
+## Task 1
+
+As you can see, this file have been made and uploaded to GitHub.
+
+```{r}
+# In order to keep the Rmd file clean, all the libraries are downloaded here. Keep scrolling.
+library(MASS)
+library(corrplot)
+library(tidyverse)
+library(plotly)
+```
+
+## Task 2
+
+The data to be analyze this week is called Boston. It comes from MASS package. The data is rather classic set of information. It consist data related to housing values in suburbs of Boston and several other parameters including air quality, crime rate and proportion of people of color at those suburbs. The dataset is rather old. It is first published in 1978.
+
+```{r}
+data("Boston")
+```
+
+The str() method is called for checking the basic structure of the data. The data has 506 rows and 14 columns. The variable names and types are listed here:
+
+```{r}
+str(Boston)
+
+```
+
+## Task 3
+
+Here is the pairs-plot of the dataset. Since the data has quite many columns, it practically shows you nothing. 
+
+```{r}
+pairs(Boston)
+
+```
+
+It is better to use corrplot()-method for checking the data set. The tidyverse and corrplot packages were downloaded for this.
+
+The correlations between different parameters are shown here. The larger and darker the circle is, the stronger the correlation is. Blue represents positive and red negative correlation.
+
+```{r}
+cor_matrix<-cor(Boston) %>% round(digits=2)
+
+corrplot(cor_matrix, method="circle", type = "upper", cl.pos = "b", tl.pos = "d", tl.cex = 0.6)
+```
+
+The histograms for each variable can be drawn using ggplot2. Traditionally, the data set is used for demonstrating effects of different parameters to housing values.
+
+```{r}
+ggplot(gather(Boston), aes(value)) + 
+    geom_histogram(bins = 10) + 
+    facet_wrap(~key, scales = 'free_x')
+```
+
+## Task 4
+
+In this task, the data set "Boston" is standardized and crime rate is switched to categorical variable.
+
+
+As one can see, the mean value for each parameter is zero after scaling.
+```{r}
+## First, the data set is scaled and summary is printed
+boston_scaled <- scale(Boston)
+boston_scaled=as.data.frame(boston_scaled)
+
+summary(boston_scaled)
+```
+
+
+```{r}
+# Then the crime rate is switched to categorical variable.
+bins <- quantile(boston_scaled$crim)
+crime <- cut(boston_scaled$crim, breaks = bins, include.lowest = TRUE, label=c("low", "med_low", "med_high", "high"))
+boston_scaled <- dplyr::select(boston_scaled, -crim)
+boston_scaled <- data.frame(boston_scaled, crime)
+```
+
+The final part of this task is to split the scaled data set into test and train data using 80-20 split.
+
+```{r}
+# number of rows in the Boston dataset 
+n <- nrow(boston_scaled)
+# choose randomly 80% of the rows
+ind <- sample(n,  size = n * 0.8)
+# create train set
+train <- boston_scaled[ind,]
+# create test set 
+test <- boston_scaled[-ind,]
+```
+
+After the model is trained, the results it gives to the test set is less-biased estimator for the actual model accuracy.
+
+## Task 5
+
+First, the LDA-model is fitted to the data set. This time, the catergorical crime rate is used as target variable.
+
+```{r}
+# These simple models can be applied using a single line of code.
+lda.fit <- lda(crime ~ ., data = train)
+```
+
+A new function "lda-arrows" is defined for the task. The function draws the LDA bi-plot.
+
+```{r}
+
+lda.arrows <- function(x, myscale = 1, arrow_heads = 0.1, color = "red", tex = 0.75, choices = c(1,2)){
+  heads <- coef(x)
+  arrows(x0 = 0, y0 = 0, 
+         x1 = myscale * heads[,choices[1]], 
+         y1 = myscale * heads[,choices[2]], col=color, length = arrow_heads)
+  text(myscale * heads[,choices], labels = row.names(heads), 
+       cex = tex, col=color, pos=3)
+}
+
+# target classes as numeric
+classes <- as.numeric(train$crime)
+
+# plot the lda results
+plot(lda.fit, dimen = 2, col = classes, pch = classes)
+lda.arrows(lda.fit, myscale = 1)
+
+```
+
+One can see, that is actually relatively easy to separate the high-crime rate areas
+
+## Task 6
+
+First, the correct classes are separated from the test set
+
+```{r}
+
+# save the correct classes from test data
+correct_classes <- test$crime
+# remove the crime variable from test data
+test <- dplyr::select(test, -crime)
+```
+
+The rest of the test data is fed into the trained LDA model. The cross tabulated results are printed.
+
+```{r}
+
+# predict classes with test data
+lda.pred <- predict(lda.fit, newdata = test)
+
+# cross tabulate the results
+table(correct = correct_classes, predicted = lda.pred$class)
+
+```
+
+
+As the results show, the model can predict the high crime rate suburbs with nearly 100% accuracy. However, the model truly struggles when it tries to decide, should a suburb belong to low or med_low category. In addition, there is some problems to find the difference between med_low and med_high suburbs.
+
+## Task 7
+
+First, let's reload and standardize the Boston data set
+
+```{r}
+
+data("Boston")
+boston_scaled <- scale(Boston)
+boston_scaled=as.data.frame(boston_scaled)
+
+```
+
+Second, let's build a k-mean clustering algorithm with the scaled boston data.
+
+Let's select 2 as the number of clusters. Since 14x14 pair plot is bit difficult to look at. Let's draw three smaller ones.
+
+```{r}
+
+k_max <- 10
+
+# calculate the total within sum of squares
+twcss <- sapply(1:k_max, function(k){kmeans(boston_scaled, k)$tot.withinss})
+
+# visualize the results
+qplot(x = 1:k_max, y = twcss, geom = 'line')
+
+# k-means clustering
+km <-kmeans(boston_scaled, centers = 2)
+
+# plot the Boston dataset with clusters
+pairs(boston_scaled[1:5], col = km$cluster)
+pairs(boston_scaled[5:10], col = km$cluster)
+pairs(boston_scaled[10:14], col = km$cluster)
+
+```
+
+The pair plots shows nice separation of two groups. The results are quite simillar as with the LDA algorithm. With LDA we saw that it is relatively easy to find the suburbs with high crime rate. But there was significant overlapping with suburbs that had low, med_low and med_high crime rate.
+
+## Bonus
+
+First, let's perform the k-means clustering using 3 centers.
+
+```{r}
+km2 <-kmeans(boston_scaled, centers = 3)
+```
+
+Then, let's try to fit the LDA to the new k-means model output.
+
+```{r}
+# These simple models can be applied using a single line of code.
+lda.fit2 <- lda(km2$cluster ~ ., data = boston_scaled)
+```
+
+
+Now, let's look the results. It seems that the model can predict detect the suburbs with high crime rate using this unsupervised learning method.
+
+
+```{r}
+
+lda.arrows <- function(x, myscale = 1, arrow_heads = 0.1, color = "red", tex = 0.75, choices = c(1,2)){
+  heads <- coef(x)
+  arrows(x0 = 0, y0 = 0, 
+         x1 = myscale * heads[,choices[1]], 
+         y1 = myscale * heads[,choices[2]], col=color, length = arrow_heads)
+  text(myscale * heads[,choices], labels = row.names(heads), 
+       cex = tex, col=color, pos=3)
+}
+
+# target classes as numeric
+classes <- as.numeric(km2$cluster)
+
+# plot the lda results
+plot(lda.fit2, dimen = 2, col = classes, pch = classes)
+lda.arrows(lda.fit, myscale = 1)
+
+```
+
+
+## Super bonus
+
+First part of the super bonus task
+
+```{r}
+
+model_predictors <- dplyr::select(train, -crime)
+# check the dimensions
+dim(model_predictors)
+dim(lda.fit$scaling)
+# matrix multiplication
+matrix_product <- as.matrix(model_predictors) %*% lda.fit$scaling
+matrix_product <- as.data.frame(matrix_product)
+
+
+plot_ly(x = matrix_product$LD1, y = matrix_product$LD2, z = matrix_product$LD3, type= 'scatter3d', mode='markers')
+
+```
+
