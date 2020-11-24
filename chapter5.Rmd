@@ -1,0 +1,178 @@
+
+# Week 5 - Dimensionality reduction techniques
+
+This first chunk is just for downloading data and libraries.
+```{r}
+
+date()
+
+url="http://s3.amazonaws.com/assets.datacamp.com/production/course_2218/datasets/human2.txt"
+
+human=read.csv(url)
+
+library(corrplot)
+library(tidyverse)
+library(ggplot2)
+
+
+```
+
+## Task 1
+
+The data combines several indicators from most countries in the world
+
+* "Country" = Country name
+
+Health and knowledge
+
+* "GNI" = Gross National Income per capita
+* "Life.Exp" = Life expectancy at birth
+* "Edu.Exp" = Expected years of schooling 
+* "Mat.Mor" = Maternal mortality ratio
+* "Ado.Birth" = Adolescent birth rate
+
+Empowerment
+
+* "Parli.F" = Percetange of female representatives in parliament
+* "Edu2.F" = Proportion of females with at least secondary education
+* "Edu2.M" = Proportion of males with at least secondary education
+* "Labo.F" = Proportion of females in the labour force
+* "Labo.M" " Proportion of males in the labour force
+
+* "Edu2.FM" = Edu2.F / Edu2.M
+* "Labo.FM" = Labo2.F / Labo2.M
+
+Summary of each individual variable:
+
+```{r}
+print(summary(human))
+```
+
+Histograms of different variables in the data set.
+
+```{r}
+human %>%
+  keep(is.numeric) %>% 
+  gather() %>% 
+  ggplot(aes(value)) +
+    facet_wrap(~ key, scales = "free") +
+    geom_histogram()
+```
+
+
+Corrplot is nice way to inspect linear correlation coefficients between variables in a dataset.
+```{r}
+cor_matrix<-cor(human) %>% round(digits=2)
+
+corrplot(cor_matrix, method="circle", type = "upper", cl.pos = "b", tl.pos = "d", tl.cex = 0.6)
+```
+
+There are several parameters, that seems to correlate rather nicely between each other. For example it is rather obvious, that high life expectancy correlates negatively with maternal mortality rate. One thing was not so obvious, but still interesting. Proportion of females in the labour force does not correlate with anything.
+
+## Task 2
+
+PCA model and the biplot for non-standardized data. 
+
+```{r}
+
+## PCA model and biplot
+pca_human <- prcomp(human)
+
+s <- summary(pca_human)
+
+# rounded percetanges of variance captured by each PC
+pca_pr <- round(1*s$importance[2, ]*100, digits = 1)
+
+# create object pc_lab to be used as axis labels
+pc_lab=paste0(names(pca_pr), " (", pca_pr, "%)")
+
+# draw a biplot
+biplot(pca_human, cex = c(0.5, 1), col = c("grey40", "deeppink2"), xlab = pc_lab[1], ylab = pc_lab[2])
+
+```
+
+It can be clearly seen, that GNI is only explaining variable for non-standardized data.
+
+## Task 3
+
+Same model, but for scaled data.
+
+```{r}
+
+human_std <- scale(human)
+
+## PCA model and biplot
+pca_human <- prcomp(human_std)
+
+s <- summary(pca_human)
+
+# rounded percetanges of variance captured by each PC
+pca_pr <- round(1*s$importance[2, ]*100, digits = 1)
+
+# create object pc_lab to be used as axis labels
+pc_lab=paste0(names(pca_pr), " (", pca_pr, "%)")
+
+# draw a biplot
+biplot(pca_human, cex = c(0.5, 1), col = c("grey40", "deeppink2"), xlab = pc_lab[1], ylab = pc_lab[2])
+
+```
+
+From the data, three different groups of variable can be detected. The first group: In general, Proportion of females in the labour force (“Labo.F”) and Percetange of female representatives in parliament (“Parli.F”) seems to correlate positively. The explanation is more or less obvious. If females participate labour force, the they also participate politics.
+
+Second group consists two variables: Maternal mortality ratio (“Mat.Mor”) and Adolescent birth rate (“Ado.Birth”). This is also rather obvious positive correlation. Maternal mortality ratio is often correlated with income level. 
+
+The third group consists last four parameters: "GNI" = Gross National Income per capita, "Life.Exp" = Life expectancy at birth,  "Edu.Exp" = Expected years of schooling and Edu2.FM = Proportion of females with at least secondary education / Proportion of males with at least secondary education. These third group parameters correlate negatively with the second group.
+
+## Task 4
+
+First parameter is a linear combination of six parameters: GNI, Life.Exp, Edu.Exp, Edu2.FM, Mat.Mor and Ado.Birth. This parameter could be called for example "Economical index".
+
+Second PC parameter is a linear combination of Labo.FM and Parli.F. This parameter can be called for example "Equality index"
+
+## Task 5
+
+Let's first download the data and look the structure
+
+```{r}
+library(FactoMineR) 
+data(tea)
+
+print(str(tea))
+
+```
+
+The dataset has 300 rows and 36 variables. For shake of simplicity, let's narrow down the data set by removing most of the variables
+
+```{r}
+keep_columns <- c("Tea", "How", "how", "sugar", "where", "lunch")
+tea_time <- subset(tea, select=keep_columns)
+
+print(summary(tea_time))
+```
+
+Let's visualize the data set.
+
+```{r}
+# visualize the dataset
+gather(tea_time) %>% ggplot(aes(value)) + facet_wrap("key", scales = "free") + geom_bar()
+
+theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8))
+```
+
+Data shows that: People prefer Earl Grey tea and has no lear opinion about sugar.
+
+```{r}
+# multiple correspondence analysis
+mca <- MCA(tea_time, graph = FALSE)
+
+# summary of the model
+
+
+# visualize MCA
+plot(mca, invisible=c("ind"))
+```
+
+Data clearly shows, that we have a strong hipster cluster. The people, that drinks unpacked tea buys that from tea shops.
+
+
+
