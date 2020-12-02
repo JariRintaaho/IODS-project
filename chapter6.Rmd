@@ -1,0 +1,151 @@
+# Week 6 - Analysis of longitudinal data
+
+This first chunk is just for libraries.
+```{r}
+
+date()
+
+library(corrplot)
+library(tidyverse)
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+
+```
+
+## Task 1. Analysing RATS data
+
+First, let's load RATS data set and look its structure
+
+```{r}
+
+url_RATS="https://raw.githubusercontent.com/KimmoVehkalahti/MABS/master/Examples/data/rats.txt"
+
+RATS=read.csv(url_RATS, sep="\t")
+
+RATS$ID=as.factor(RATS$ID)
+RATS$Group=as.factor(RATS$Group)
+
+
+glimpse(RATS)
+head(RATS)
+tail(RATS)
+
+```
+
+The RATS file has 16 time series with 11 time series each. The time serieses can be spitted ont three different groups.
+
+
+Now, let's convert the RATS into "long format"
+
+```{r}
+
+RATSL <- RATS %>%
+  gather(key = WD, value = Weight, -ID, -Group) %>%
+  mutate(Time = as.integer(substr(WD,3,4))) 
+
+str(RATSL)
+
+glimpse(RATSL)
+head(RATSL)
+tail(RATSL)
+```
+
+Let's draw each individual time series.
+
+
+```{r}
+p1 <- ggplot(RATSL, aes(x = Time, y = Weight, group = ID))
+p2 <- p1 + geom_line() + scale_linetype_manual(values = rep(1:10, times=4))
+p3 <- p2 + facet_grid(. ~ Group, labeller = label_both)
+p4 <- p3 + theme_bw() + theme(legend.position = "none")
+p5 <- p4 + theme(panel.grid.minor.y = element_blank())
+p6 <- p5 + scale_y_continuous(limits = c(min(RATSL$Weight), max(RATSL$Weight)))
+p6
+```
+
+It can be seen, that group 1 is clearly separated data set. Group 2 has one clear out lier data series. Groups 2 and 3 seems not to differ much.
+
+Let's standardize the data sets. And then plot them.
+
+
+```{r}
+# Standardise the scores:
+RATSL <- RATSL %>%
+  group_by(Time) %>%
+  mutate( stdWeight = (Weight - mean(Weight))/sd(Weight) ) %>%
+  ungroup()
+glimpse(RATSL)
+p1 <- ggplot(RATSL, aes(x = Time, y = stdWeight, group = ID))
+p2 <- p1 + geom_line() + scale_linetype_manual(values = rep(1:10, times=4))
+p3 <- p2 + facet_grid(. ~ Group, labeller = label_both)
+p4 <- p3 + theme_bw() + theme(legend.position = "none")
+p5 <- p4 + theme(panel.grid.minor.y = element_blank())
+p6 <- p5 + scale_y_continuous(name = "standardized Weight")
+p6
+```
+
+When standardized the limes looks more or less the same as without standardization.
+
+Let's then look the box plots.
+
+
+```{r}
+p1 <- ggplot(RATSL, aes(x = factor(Time), y = Weight, fill = Group))
+p2 <- p1 + geom_boxplot(position = position_dodge(width = 0.9))
+p3 <- p2 + theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+p4 <- p3 + theme(legend.position = c(0.8,0.8))
+p5 <- p4 + scale_x_discrete(name = "week")
+# Black & White version:
+#p6 <- p5 + scale_fill_grey(start = 0.5, end = 1)
+p5
+```
+
+
+With the box plots, the difference between groups 2 and 3 comes clear. However, each of the groups have clearsly outliers.
+
+Let's look the mean values for each group.
+
+```{r}
+RATSL8S <- RATSL %>%
+  filter(Time > 0) %>%
+  group_by(Group, ID) %>%
+  summarise( mean=mean(Weight) ) %>%
+  ungroup()
+p1 <- ggplot(RATSL8S, aes(x = Group, y = mean))
+p2 <- p1 + geom_boxplot()
+p3 <- p2 + theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+p4 <- p3 + stat_summary(fun.y = "mean", geom = "point", shape=23, size=4, fill = "white")
+p5 <- p4 + scale_y_continuous(name = "mean(Weight)")
+p5
+```
+
+The most obvious outlier is for Group 2. Let's remove it.
+
+```{r}
+# Remove the outlier:
+RATSL8S1 <- RATSL8S %>%
+  filter(mean < 550)
+p1 <- ggplot(RATSL8S1, aes(x = Group, y = mean))
+p2 <- p1 + geom_boxplot()
+p3 <- p2 + theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+p4 <- p3 + stat_summary(fun.y = "mean", geom = "point", shape=23, size=4, fill = "white")
+p5 <- p4 + scale_y_continuous(name = "mean(Weight), weeks 1-8")
+p5
+```
+
+Now, let's test, how good linear fitting we can do?
+
+```{r}
+# Add the baseline from the original data as a new variable to the summary data:
+baseline <- RATS$WD1
+RATSL8S2 <- RATSL8S %>%
+  mutate(baseline)
+glimpse(RATSL8S2)
+# Fit the ANCOVA model and see the results:
+fit <- lm(mean ~ baseline + Group, data = RATSL8S2)
+summary(fit)
+anova(fit)
+```
+
+It seems that we can separate the different groups even when the baseline is taken into account.
